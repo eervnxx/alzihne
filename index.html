@@ -293,6 +293,13 @@
             .admin-select-sm { font-size: 11px; width: 100px; }
             .lecture-input { width: 60px; font-size: 12px; }
         }
+
+        @media print {
+            body * { visibility: hidden; }
+            #printCard, #printCard * { visibility: visible; }
+            #printCard { position: absolute; left: 0; top: 0; width: 100%; max-width: 380px; margin: auto; }
+            body { background: white !important; }
+        }
     </style>
 </head>
 <body>
@@ -616,7 +623,7 @@
             if (!data) { st('لا بيانات', 'error'); return; }
             const container = document.getElementById('printContainer');
             container.innerHTML = `
-                <div class="print-card" id="printCard" style="width:380px;background:white;padding:20px;font-family:'Cairo',sans-serif;direction:rtl;text-align:right;border:3px solid #1e3a8a;border-radius:16px;">
+                <div id="printCard" style="width:380px;max-width:100%;background:white;padding:20px;font-family:'Cairo',sans-serif;direction:rtl;text-align:right;border:3px solid #1e3a8a;border-radius:16px;margin:20px auto;position:relative;">
                     <h2 style="text-align:center;color:#1e3a8a;border-bottom:3px solid #f59e0b;padding-bottom:8px;margin-bottom:12px;font-size:18px;">🧠 الحساب الذهني</h2>
                     <p style="text-align:center;color:#6b7280;font-size:12px;margin-bottom:12px;">وصل بيانات المشترك</p>
                     <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;"><span style="color:#6b7280;font-weight:700;">📝 الاسم</span><span style="color:#111827;font-weight:700;">${data.fullName||'—'}</span></div>
@@ -629,17 +636,10 @@
                     <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;"><span style="color:#6b7280;font-weight:700;">📅 التاريخ</span><span style="color:#111827;font-weight:700;">${new Date(data.createdAt).toLocaleDateString('ar-IQ')}</span></div>
                     <p style="text-align:center;color:#9ca3af;font-size:10px;margin-top:12px;border-top:2px solid #e5e7eb;padding-top:6px;">صادر من إدارة الحساب الذهني</p>
                 </div>`;
-            const card = document.getElementById('printCard');
-            try {
-                const canvas = await html2canvas(card, { scale: 2, backgroundColor: '#ffffff', logging: false });
-                const img = canvas.toDataURL('image/png');
-                const w = window.open('', '_blank');
-                w.document.write(
-                    '<html><head><title>طباعة</title><style>*{margin:0;padding:0}body{display:flex;justify-content:center;align-items:center;min-height:100vh;background:#fff}img{max-width:100%;height:auto;display:block}</style></head><body><img src="' +
-                    img + '" onload="setTimeout(()=>{window.print();window.close();},500)"></body></html>');
-                w.document.close();
-            } catch (e) { st('خطأ في الطباعة', 'error'); }
-            container.innerHTML = '';
+            setTimeout(() => {
+                window.print();
+                setTimeout(() => { container.innerHTML = ''; }, 1000);
+            }, 300);
         }
 
         function handleSearch() { rT(cF, $('searchInput')?.value || ''); }
