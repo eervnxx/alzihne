@@ -270,6 +270,39 @@
             transition: var(--transition); padding: 5px 10px; border-radius: 16px; }
         .toggle-link:hover { background: #eff6ff; }
 
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            max-width: 420px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+        }
+        .modal-body { padding: 16px; }
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px;
+            border-top: 1px solid #e5e7eb;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .modal-actions .btn { width: auto; flex: 1; min-width: 100px; font-size: 13px; padding: 10px 16px; }
+
         @media (min-width: 768px) {
             .card-top { padding: 36px 28px 32px; }
             .card-top .logo-icon { font-size: 60px; }
@@ -296,9 +329,11 @@
 
         @media print {
             body * { visibility: hidden; }
-            #printCard, #printCard * { visibility: visible; }
-            #printCard { position: absolute; left: 0; top: 0; width: 100%; max-width: 380px; margin: auto; }
-            body { background: white !important; }
+            .modal-overlay, .modal-overlay * { visibility: visible; }
+            .modal-overlay { position: absolute; left: 0; top: 0; width: 100%; background: white !important; display: block !important; padding: 0 !important; }
+            .modal-content { box-shadow: none !important; border-radius: 0 !important; max-width: 100% !important; width: 100% !important; }
+            .modal-actions { display: none !important; }
+            .modal-body { padding: 10px !important; }
         }
     </style>
 </head>
@@ -423,13 +458,26 @@
             </div>
         </div>
     </div>
-    <div id="printContainer"></div>
+    
+    <!-- Print Modal -->
+    <div class="modal-overlay" id="printModal">
+        <div class="modal-content">
+            <div class="modal-body" id="printCardContainer"></div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="printModal()">🖨️ طباعة</button>
+                <button class="btn btn-gold" onclick="downloadModal()">⬇️ تحميل</button>
+                <button class="btn btn-outline" onclick="closeModal()">✖ إغلاق</button>
+            </div>
+        </div>
+    </div>
+    
     <div class="toast-popup" id="toast"></div>
 
     <script>
         const C = 'subscribers', AP = 'Ahmedhassan', BM = (59*60+59)*1000, AK = 'admin_exp', DL = 8;
         const TB = '8670936279:AAH52Ablljv0kl3ChIDfE8UUryDPyf7pQ9g', TC = '5627350311';
         let cF = 'all', sU = new Set();
+        let currentPrintData = null;
 
         function gi() { let i = localStorage.getItem('did'); if (!i) { i = 'd_' + Date.now() + '_' + Math.random()
                 .toString(36).slice(2, 9);
@@ -621,9 +669,9 @@
         async function pp(did) {
             const data = await gu(did);
             if (!data) { st('لا بيانات', 'error'); return; }
-            const container = document.getElementById('printContainer');
-            container.innerHTML = `
-                <div id="printCard" style="width:380px;max-width:100%;background:white;padding:20px;font-family:'Cairo',sans-serif;direction:rtl;text-align:right;border:3px solid #1e3a8a;border-radius:16px;margin:20px auto;position:relative;">
+            currentPrintData = data;
+            const cardHTML = `
+                <div id="printCard" style="background:white;padding:20px;font-family:'Cairo',sans-serif;direction:rtl;text-align:right;border:3px solid #1e3a8a;border-radius:16px;">
                     <h2 style="text-align:center;color:#1e3a8a;border-bottom:3px solid #f59e0b;padding-bottom:8px;margin-bottom:12px;font-size:18px;">🧠 الحساب الذهني</h2>
                     <p style="text-align:center;color:#6b7280;font-size:12px;margin-bottom:12px;">وصل بيانات المشترك</p>
                     <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;"><span style="color:#6b7280;font-weight:700;">📝 الاسم</span><span style="color:#111827;font-weight:700;">${data.fullName||'—'}</span></div>
@@ -636,10 +684,34 @@
                     <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;"><span style="color:#6b7280;font-weight:700;">📅 التاريخ</span><span style="color:#111827;font-weight:700;">${new Date(data.createdAt).toLocaleDateString('ar-IQ')}</span></div>
                     <p style="text-align:center;color:#9ca3af;font-size:10px;margin-top:12px;border-top:2px solid #e5e7eb;padding-top:6px;">صادر من إدارة الحساب الذهني</p>
                 </div>`;
-            setTimeout(() => {
-                window.print();
-                setTimeout(() => { container.innerHTML = ''; }, 1000);
-            }, 300);
+            document.getElementById('printCardContainer').innerHTML = cardHTML;
+            document.getElementById('printModal').classList.add('active');
+        }
+
+        function printModal() {
+            window.print();
+        }
+
+        async function downloadModal() {
+            const card = document.getElementById('printCard');
+            if (!card) { st('لا يوجد كارد', 'error'); return; }
+            try {
+                st('جاري التحميل...', 'info');
+                const canvas = await html2canvas(card, { scale: 2, backgroundColor: '#ffffff', logging: false });
+                const link = document.createElement('a');
+                link.download = 'مشترك-' + (currentPrintData?.fullName || 'بيانات') + '.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                st('✅ تم التحميل', 'success');
+            } catch (e) {
+                st('خطأ في التحميل', 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('printModal').classList.remove('active');
+            document.getElementById('printCardContainer').innerHTML = '';
+            currentPrintData = null;
         }
 
         function handleSearch() { rT(cF, $('searchInput')?.value || ''); }
